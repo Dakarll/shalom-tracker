@@ -33,6 +33,4 @@ jobs:
         env:
           BACK4APP_APP_ID: ${{ secrets.BACK4APP_APP_ID }}
           BACK4APP_MASTER_KEY: ${{ secrets.BACK4APP_MASTER_KEY }}
-          SHALOM_USER: ${{ secrets.SHALOM_USER }}
-          SHALOM_PASS: ${{ secrets.SHALOM_PASS }}
         run: node check_shalom.js
