@@ -64,12 +64,16 @@ async function actualizarEnvio(objectId, cambios) {
     return parseFetch('PUT', objectId, cambios);
 }
 
-async function consultarGuia(page, guia) {
+async function consultarGuia(page, guia, codigo) {
     await page.goto('https://shalom.com.pe/rastrea', { waitUntil: 'networkidle' });
 
-    const input = page.locator('input[placeholder="N° de Orden"]');
-    await input.fill(guia);
-    await input.press('Enter');
+    // El formulario de rastreo tiene DOS campos obligatorios:
+    //   - N° de Orden (input maxlength=8)
+    //   - Código de Orden (input maxlength=4, código de seguridad de 4 dígitos)
+    // y se envía con un botón real (type="submit"), no basta con Enter.
+    await page.fill('input[placeholder="N° de Orden"]', guia);
+    await page.fill('input[placeholder="Código de Orden"]', codigo);
+    await page.click('button[type="submit"]:has-text("Buscar")');
 
     // Espera a que la app (Vue/SPA) renderice el resultado.
     await page.waitForTimeout(3000);
@@ -78,7 +82,7 @@ async function consultarGuia(page, guia) {
     const hayResultado = (await estadoLocator.count()) > 0;
 
     if (!hayResultado) {
-        return { estado: 'error', detalle: 'No se encontró resultado para esta guía (verifica el número o si la orden existe / está muy reciente).' };
+        return { estado: 'error', detalle: 'No se encontró resultado (verifica guía + código, o si la orden es muy reciente).' };
     }
 
     const estadoTexto = (await estadoLocator.innerText()).trim();
@@ -109,7 +113,7 @@ async function main() {
         for (const envio of guias) {
             console.log(`🔍 Consultando guía ${envio.guia}...`);
             try {
-                const resultado = await consultarGuia(page, envio.guia);
+                const resultado = await consultarGuia(page, envio.guia, envio.codigo);
 
                 const cambios = {
                     estado: resultado.estado,
