@@ -26,8 +26,19 @@ const SHALOM_PASS = process.env.SHALOM_PASS;
 const PARSE_URL = 'https://parseapi.back4app.com';
 const CLASE = 'EnvioShalom';
 
-if (!BACK4APP_APP_ID || !BACK4APP_MASTER_KEY || !SHALOM_USER || !SHALOM_PASS) {
-    console.error('❌ Faltan variables de entorno (BACK4APP_APP_ID, BACK4APP_MASTER_KEY, SHALOM_USER, SHALOM_PASS).');
+const variablesRequeridas = {
+    BACK4APP_APP_ID,
+    BACK4APP_MASTER_KEY,
+    SHALOM_USER,
+    SHALOM_PASS
+};
+const faltantes = Object.entries(variablesRequeridas)
+    .filter(([nombre, valor]) => !valor)
+    .map(([nombre]) => nombre);
+
+if (faltantes.length > 0) {
+    console.error(`❌ Faltan estas variables de entorno específicamente: ${faltantes.join(', ')}`);
+    console.error('   (Revisa en GitHub: Settings → Secrets and variables → Actions → Repository secrets)');
     process.exit(1);
 }
 
