@@ -1,0 +1,38 @@
+name: Verificar envíos Shalom
+
+on:
+  schedule:
+    # Cada 30 minutos. Nota: GitHub Actions no garantiza precisión exacta
+    # en horarios de alta demanda; puede haber unos minutos de retraso.
+    - cron: '*/30 * * * *'
+  workflow_dispatch: {} # permite ejecutarlo manualmente desde la pestaña "Actions"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias
+        working-directory: scripts
+        run: npm install
+
+      - name: Instalar navegador de Playwright
+        working-directory: scripts
+        run: npx playwright install --with-deps chromium
+
+      - name: Ejecutar verificación
+        working-directory: scripts
+        env:
+          BACK4APP_APP_ID: ${{ secrets.BACK4APP_APP_ID }}
+          BACK4APP_MASTER_KEY: ${{ secrets.BACK4APP_MASTER_KEY }}
+          SHALOM_USER: ${{ secrets.SHALOM_USER }}
+          SHALOM_PASS: ${{ secrets.SHALOM_PASS }}
+        run: node check_shalom.js
