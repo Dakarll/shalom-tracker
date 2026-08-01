@@ -10,7 +10,7 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Clonar repositorio
         uses: actions/checkout@v4
@@ -19,6 +19,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Instalar ffmpeg (para generar el video del QR)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Instalar dependencias
         working-directory: scripts
