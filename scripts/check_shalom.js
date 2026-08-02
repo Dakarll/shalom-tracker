@@ -156,6 +156,13 @@ async function consultarPorOseId(oseId) {
     const carpetaTemp = fs.mkdtempSync(path.join(os.tmpdir(), 'shalom-qr-'));
     let browser;
 
+    // Carpeta de diagnóstico: capturas y logs quedan aquí para poder
+    // subirlos como "artifact" de GitHub Actions y revisarlos después,
+    // sin depender de adivinar qué pasó.
+    const carpetaDebug = path.join(process.cwd(), 'debug-oseid');
+    fs.mkdirSync(carpetaDebug, { recursive: true });
+    const logsConsola = [];
+
     try {
         const rutaVideo = await generarVideoQR(`${oseId}/document/1/`, carpetaTemp);
 
@@ -180,7 +187,12 @@ async function consultarPorOseId(oseId) {
         });
         const page = await context.newPage();
 
+        page.on('console', msg => logsConsola.push(`[console.${msg.type()}] ${msg.text()}`));
+        page.on('pageerror', err => logsConsola.push(`[pageerror] ${err.message}`));
+        page.on('requestfailed', req => logsConsola.push(`[requestfailed] ${req.url()} — ${req.failure()?.errorText}`));
+
         await page.goto('https://shalom.com.pe/rastrea', { waitUntil: 'networkidle' });
+        await page.screenshot({ path: path.join(carpetaDebug, `${oseId}-1-antes.png`) }).catch(() => {});
 
         // Selector confirmado contra el HTML real: botón type="button"
         // (no "submit"), con ícono SVG de escáner QR, visible solo en
@@ -192,10 +204,26 @@ async function consultarPorOseId(oseId) {
         }
         await botonEscanear.click();
 
-        return await leerResultadoEnPantalla(page);
+        // Captura justo después del click, sin esperar más: aquí se ve
+        // si se abrió el modal/cámara o si no pasó nada visible.
+        await page.waitForTimeout(1500);
+        await page.screenshot({ path: path.join(carpetaDebug, `${oseId}-2-tras-click.png`) }).catch(() => {});
+
+        const resultado = await leerResultadoEnPantalla(page);
+
+        // Captura final, tras esperar el resultado (o el timeout).
+        await page.screenshot({ path: path.join(carpetaDebug, `${oseId}-3-final.png`) }).catch(() => {});
+
+        if (resultado.estado === 'error') {
+            const resumenLogs = logsConsola.slice(-10).join(' | ') || '(sin logs de consola)';
+            resultado.detalle += ` — Logs: ${resumenLogs}`;
+        }
+
+        return resultado;
     } catch (err) {
         return { estado: 'error', detalle: `Error en escaneo QR simulado: ${err.message}` };
     } finally {
+        fs.writeFileSync(path.join(carpetaDebug, `${oseId}-consola.log`), logsConsola.join('\n'));
         if (browser) await browser.close();
         fs.rmSync(carpetaTemp, { recursive: true, force: true });
     }
