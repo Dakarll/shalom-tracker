@@ -1,0 +1,36 @@
+name: Sincronizar agencias Shalom
+
+on:
+  schedule:
+    # 1 vez al día (06:20 UTC ≈ 01:20 hora Perú). Las agencias cambian
+    # mucho menos que el estado de un envío, no hace falta más seguido.
+    - cron: '20 6 * * *'
+  workflow_dispatch: {} # ejecución manual desde la pestaña "Actions"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias
+        working-directory: scripts
+        run: npm install
+
+      - name: Instalar navegador de Playwright
+        working-directory: scripts
+        run: npx playwright install --with-deps chromium
+
+      - name: Ejecutar sincronización de agencias
+        working-directory: scripts
+        env:
+          BACK4APP_APP_ID: ${{ secrets.BACK4APP_APP_ID }}
+          BACK4APP_MASTER_KEY: ${{ secrets.BACK4APP_MASTER_KEY }}
+        run: node check_agencias.js
